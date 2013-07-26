@@ -30,6 +30,8 @@ using RepetierHost.model.geom;
 using Microsoft.Win32;
 using System.Threading;
 using System.Diagnostics;
+using System.Net;
+using System.Net.Mail;
 
 namespace RepetierHost
 {
@@ -38,6 +40,9 @@ namespace RepetierHost
 
     public partial class Main : Form
     {
+        const string EMAIL = "ubcrapidprintnotification@gmail.com";
+        const string PASSWORD = "ubcrapid";
+
         public event languageChangedEvent languageChanged;
         private const int InfoPanel2MinSize = 440;
         public static PrinterConnection conn;
@@ -85,7 +90,7 @@ namespace RepetierHost
             public void DoWork()
             {
                 RepetierEditor ed = Main.main.editor;
-                
+
                 Stopwatch sw = new Stopwatch();
                 sw.Start();
                 visual = new GCodeVisual();
@@ -104,9 +109,9 @@ namespace RepetierHost
                         visual.maxLayer = ed.ShowMaxLayer;
                         break;
                 }
-                visual.parseGCodeShortArray(Main.main.previewArray0, true,0);
-                visual.parseGCodeShortArray(Main.main.previewArray1, false,1);
-                visual.parseGCodeShortArray(Main.main.previewArray2, false,2);
+                visual.parseGCodeShortArray(Main.main.previewArray0, true, 0);
+                visual.parseGCodeShortArray(Main.main.previewArray1, false, 1);
+                visual.parseGCodeShortArray(Main.main.previewArray2, false, 2);
                 Main.main.previewArray0 = Main.main.previewArray1 = Main.main.previewArray2 = null;
                 visual.Reduce();
                 Main.main.gcodePrintingTime = visual.ana.printingTime;
@@ -145,15 +150,15 @@ namespace RepetierHost
         }
         private void Main_Load(object sender, EventArgs e)
         {
-        /*    RegMemory.RestoreWindowPos("mainWindow", this);
-           // if (WindowState == FormWindowState.Maximized)
-           //     Application.DoEvents(); // This crashes mono if run here
-            splitLog.SplitterDistance = RegMemory.GetInt("logSplitterDistance", splitLog.SplitterDistance);
-            splitInfoEdit.SplitterDistance = RegMemory.GetInt("infoEditSplitterDistance", Width - 470);
-            //A bug causes the splitter to throw an exception if the PanelMinSize is set too soon.
-            splitInfoEdit.Panel2MinSize = Main.InfoPanel2MinSize;
-            //splitInfoEdit.SplitterDistance = (splitInfoEdit.Width - splitInfoEdit.Panel2MinSize);
-         * */
+            /*    RegMemory.RestoreWindowPos("mainWindow", this);
+               // if (WindowState == FormWindowState.Maximized)
+               //     Application.DoEvents(); // This crashes mono if run here
+                splitLog.SplitterDistance = RegMemory.GetInt("logSplitterDistance", splitLog.SplitterDistance);
+                splitInfoEdit.SplitterDistance = RegMemory.GetInt("infoEditSplitterDistance", Width - 470);
+                //A bug causes the splitter to throw an exception if the PanelMinSize is set too soon.
+                splitInfoEdit.Panel2MinSize = Main.InfoPanel2MinSize;
+                //splitInfoEdit.SplitterDistance = (splitInfoEdit.Width - splitInfoEdit.Panel2MinSize);
+             * */
         }
         [System.Runtime.InteropServices.DllImport("libc")]
         static extern int uname(IntPtr buf);
@@ -199,7 +204,7 @@ namespace RepetierHost
             if (WindowState == FormWindowState.Maximized)
                 Application.DoEvents();
             splitLog.SplitterDistance = RegMemory.GetInt("logSplitterDistance", splitLog.SplitterDistance);
-            splitInfoEdit.SplitterDistance = RegMemory.GetInt("infoEditSplitterDistance", Width-470);
+            splitInfoEdit.SplitterDistance = RegMemory.GetInt("infoEditSplitterDistance", Width - 470);
             if (IsMono)
             {
                 if (!IsMac)
@@ -254,8 +259,8 @@ namespace RepetierHost
             tabPage3DView.Controls.Add(threedview);
 
             printPreview = new ThreeDView();
-           // printPreview.Dock = DockStyle.Fill;
-          //  splitContainerPrinterGraphic.Panel2.Controls.Add(printPreview);
+            // printPreview.Dock = DockStyle.Fill;
+            //  splitContainerPrinterGraphic.Panel2.Controls.Add(printPreview);
             printPreview.SetEditor(false);
             printPreview.autoupdateable = true;
             printVisual = new GCodeVisual(conn.analyzer);
@@ -263,8 +268,8 @@ namespace RepetierHost
             printPreview.models.AddLast(printVisual);
             basicTitle = Text;
             jobPreview = new ThreeDView();
-         //   jobPreview.Dock = DockStyle.Fill;
-         //   splitJob.Panel2.Controls.Add(jobPreview);
+            //   jobPreview.Dock = DockStyle.Fill;
+            //   splitJob.Panel2.Controls.Add(jobPreview);
             jobPreview.SetEditor(false);
             jobPreview.models.AddLast(jobVisual);
             editor.contentChangedEvent += JobPreview;
@@ -291,7 +296,8 @@ namespace RepetierHost
 
             // Customizations
 
-            if(Custom.GetBool("removeTestgenerator",false)) {
+            if (Custom.GetBool("removeTestgenerator", false))
+            {
                 internalSlicingParameterToolStripMenuItem.Visible = false;
                 testCaseGeneratorToolStripMenuItem.Visible = false;
             }
@@ -311,7 +317,7 @@ namespace RepetierHost
             // Add languages
             foreach (Translation t in trans.translations.Values)
             {
-                ToolStripMenuItem item = new ToolStripMenuItem(t.language,null, languageSelected);
+                ToolStripMenuItem item = new ToolStripMenuItem(t.language, null, languageSelected);
                 item.Tag = t;
                 languageToolStripMenuItem.DropDownItems.Add(item);
             }
@@ -321,9 +327,11 @@ namespace RepetierHost
             {
                 Main.slicer.ActiveSlicer = Slicer.SlicerID.Slic3r;
             }
-            if(Custom.GetBool("extraSupportButton",false)) {
-                supportToolStripMenuItem.Text = Custom.GetString("extraSupportText","Support");
-            } else supportToolStripMenuItem.Visible = false;
+            if (Custom.GetBool("extraSupportButton", false))
+            {
+                supportToolStripMenuItem.Text = Custom.GetString("extraSupportText", "Support");
+            }
+            else supportToolStripMenuItem.Visible = false;
             string supportImage = Custom.GetString("extraSupportToolbarImage", "");
             if (supportImage.Length > 0 && File.Exists(Application.StartupPath + Path.DirectorySeparatorChar + supportImage))
             {
@@ -356,7 +364,7 @@ namespace RepetierHost
         {
             string[] args = Environment.GetCommandLineArgs();
             if (args.Length < 1) return;
-             
+
             //for now, just check the last arg and load it. Could add other inputs/commands later.
             for (int i = 1; i < args.Length; i++)
             {
@@ -366,7 +374,7 @@ namespace RepetierHost
                     LoadGCodeOrSTL(file);
                 }
             }
-         }
+        }
         void Form1_DragEnter(object sender, DragEventArgs e)
         {
             if (e.Data.GetDataPresent(DataFormats.FileDrop)) e.Effect = DragDropEffects.Copy;
@@ -600,7 +608,7 @@ namespace RepetierHost
         }
         public void PrinterChanged(RegistryKey pkey, bool printerChanged)
         {
-            if (printerChanged && editor!=null)
+            if (printerChanged && editor != null)
             {
                 editor.UpdatePrependAppend();
             }
@@ -741,14 +749,14 @@ namespace RepetierHost
             string fileLow = file.ToLower();
             if (fileLow.EndsWith(".stl") || fileLow.EndsWith(".obj"))
             {
-              /*  if (MessageBox.Show("Do you want to slice the STL-File? No adds it to the object grid.", "", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
-                {
-                    slicer.RunSlice(file); // Slice it and load
-                }
-                else
-                {*/
-                    tab.SelectTab(tabModel);
-                    objectPlacement.openAndAddObject(file);
+                /*  if (MessageBox.Show("Do you want to slice the STL-File? No adds it to the object grid.", "", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
+                  {
+                      slicer.RunSlice(file); // Slice it and load
+                  }
+                  else
+                  {*/
+                tab.SelectTab(tabModel);
+                objectPlacement.openAndAddObject(file);
                 //}
             }
             else
@@ -950,7 +958,7 @@ namespace RepetierHost
                 Main.main.toolRunJob.Image = Main.main.imageList.Images[2];
             }
             else
-            {                
+            {
                 Main.main.toolRunJob.Enabled = true;
                 Main.main.toolKillJob.Enabled = true;
                 Main.main.toolRunJob.Image = Main.main.imageList.Images[3];
@@ -1011,7 +1019,7 @@ namespace RepetierHost
         }
         public void Update3D()
         {
-            if(threedview!=null)
+            if (threedview != null)
                 threedview.UpdateChanges();
         }
 
@@ -1107,7 +1115,7 @@ namespace RepetierHost
             else
             {
                 splitLog.Panel2Collapsed = true;
-            }            
+            }
             //toolShowLog.Checked = !toolShowLog.Checked;
         }
 
@@ -1151,10 +1159,43 @@ namespace RepetierHost
 
         }
 
+        //Rogers Wireless: [10-digit phone number]@pcs.rogers.com
+        //Fido: [10-digit phone number]@fido.ca
+        //Telus: [10-digit phone number]@msg.telus.com
+        //Bell Mobility: [10-digit phone number]@txt.bell.ca
+        //Kudo Mobile: [10-digit phone number]@msg.koodomobile.com
+        //MTS: [10-digit phone number]@text.mtsmobility.com
+        //President’s Choice: [10-digit phone number]@txt.bell.ca
+        //Sasktel: [10-digit phone number]@sms.sasktel.com
+        //Solo: [10-digit phone number]@txt.bell.ca
+        //Virgin: [10-digit phone number]@vmobile.ca
+
+        private void printNotificationToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            PrintNotification notification = new PrintNotification();
+            if (notification.ShowDialog(this) != DialogResult.OK) return;
+
+            string input = notification.input.Text.Trim();
+            notification.Dispose();
+
+            if (!input.Contains('@'))
+            {
+                input = System.Text.RegularExpressions.Regex.Replace(input, "[^0-9]", ""); // only keep phone number
+                string[] carrierDomains = 
+                    {
+                        "pcs.rogers.com", "fido.ca", "msg.telus.com", "txt.bell.ca", "msg.koodomobile.com",
+                        "text.mtsmobility.com", "txt.bell.ca", "sms.sasktel.com", "txt.bell.ca", "vmobile.ca"
+                    };
+                       foreach (string domain in carrierDomains)
+                    SendEmail(input + "@" + domain, EMAIL, PASSWORD);
+                return;
+            }
+            SendEmail(input, EMAIL, PASSWORD);
+        }
+
         private void thingiversePopularToolStripMenuItem_Click(object sender, EventArgs e)
         {
             openLink("http://www.thingiverse.com/popular");
-
         }
 
         private void slic3rToolStripMenuItem_Click(object sender, EventArgs e)
@@ -1452,7 +1493,7 @@ namespace RepetierHost
 
         public void repetierHostDownloadPageToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            openLink(Custom.GetString("downloadUrl","http://www.repetier.com/download/"));
+            openLink(Custom.GetString("downloadUrl", "http://www.repetier.com/download/"));
         }
 
         private void sendScript1ToolStripMenuItem_Click(object sender, EventArgs e)
@@ -1504,7 +1545,8 @@ namespace RepetierHost
         static bool firstSizeCall = true;
         private void Main_SizeChanged(object sender, EventArgs e)
         {
-            if(firstSizeCall) {
+            if (firstSizeCall)
+            {
                 firstSizeCall = false;
                 splitLog.SplitterDistance = RegMemory.GetInt("logSplitterDistance", splitLog.SplitterDistance);
                 splitInfoEdit.SplitterDistance = RegMemory.GetInt("infoEditSplitterDistance", Width - 470);
@@ -1619,5 +1661,40 @@ namespace RepetierHost
         }
 
 
+
+        private void SendEmail(string recipientEmail, string senderEmail, string senderPassword)
+        {
+            try
+            {
+                var smtp = new SmtpClient
+                {
+                    Host = "smtp.gmail.com",
+                    Port = 587,
+                    EnableSsl = true,
+                    DeliveryMethod = SmtpDeliveryMethod.Network,
+                    UseDefaultCredentials = false,
+                    Credentials = new NetworkCredential(senderEmail, senderPassword),
+                    Timeout = 20000
+                };
+
+                string subject = "Print notification";
+                string body = "Your print has finished";
+
+                using (var message = new MailMessage(senderEmail, recipientEmail)
+                {
+                    From = new MailAddress(EMAIL, "UBC Rapid"),
+                    Subject = subject,
+                    Body = body
+                })
+                {
+                    smtp.Send(message);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Error occured while sending email. " + ex.Message);
+            }
+        }
     }
+
 }
