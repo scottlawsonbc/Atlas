@@ -763,7 +763,16 @@ namespace RepetierHost
             {
                 tab.SelectTab(tabGCode);
                 editor.selectContent(0);
-                editor.setContent(0, System.IO.File.ReadAllText(file));
+
+                try
+                {
+                    editor.setContent(0, System.IO.File.ReadAllText(file));
+                }
+                catch (System.IO.IOException ex)
+                {
+                    MessageBox.Show("Error encountered while processing file. " + ex.Message);
+                }
+
             }
         }
         public void LoadGCode(string file)
@@ -1186,7 +1195,7 @@ namespace RepetierHost
                         "pcs.rogers.com", "fido.ca", "msg.telus.com", "txt.bell.ca", "msg.koodomobile.com",
                         "text.mtsmobility.com", "txt.bell.ca", "sms.sasktel.com", "txt.bell.ca", "vmobile.ca"
                     };
-                       foreach (string domain in carrierDomains)
+                foreach (string domain in carrierDomains)
                     SendEmail(input + "@" + domain, EMAIL, PASSWORD);
                 return;
             }
